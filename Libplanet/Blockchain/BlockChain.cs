@@ -807,7 +807,7 @@ namespace Libplanet.Blockchain
                     "{BlockHash} for " + nameof(TrieStateStore) + ": {StateRootHash}.";
                 _logger.Debug(rootHashMsg, block.Index, block.Hash, rootHash);
 
-                if (!rootHash.Equals(block.StateRootHash))
+                if (!rootHash.Equals(block.StateRootHash) && block.Index != 0)
                 {
                     var message = $"Block #{block.Index} {block.Hash}'s state root hash " +
                         $"is {block.StateRootHash}, but the execution result is {rootHash}.";

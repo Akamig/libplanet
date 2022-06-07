@@ -18,6 +18,7 @@ using Libplanet.Explorer.Interfaces;
 using Libplanet.Explorer.Store;
 using Libplanet.Net;
 using Libplanet.Net.Protocols;
+using Libplanet.RocksDBStore;
 using Libplanet.Store;
 using Libplanet.Store.Trie;
 using Libplanet.Tx;
@@ -179,7 +180,8 @@ If omitted (default) explorer only the local blockchain store.")]
             try
             {
                 IRichStore store = LoadStore(options);
-                IStateStore stateStore = new NoOpStateStore();
+                IStateStore stateStore = new TrieStateStore(new DefaultKeyValueStore(
+                    System.IO.Path.Combine(options.StorePath, "states")));
 
                 IBlockPolicy<NullAction> policy =
                     new DumbBlockPolicy(LoadBlockPolicy<NullAction>(options));
@@ -230,6 +232,7 @@ If omitted (default) explorer only the local blockchain store.")]
                     // FIXME: The appProtocolVersion should be fixed properly.
                     var swarmOptions = new SwarmOptions
                     {
+                        Type = SwarmOptions.TransportType.NetMQTransport,
                         BootstrapOptions = new BootstrapOptions
                         {
                             SeedPeers = options.Seeds.ToImmutableList(),
@@ -266,7 +269,7 @@ If omitted (default) explorer only the local blockchain store.")]
                     {
                         await Task.WhenAll(
                             webHost.RunAsync(cts.Token),
-                            StartSwarmAsync(swarm, cts.Token)
+                            StartSwarmAsync(swarm, cts.Token, (MySQLRichStore)store)
                         );
                     }
                     catch (OperationCanceledException)
@@ -360,7 +363,8 @@ If omitted (default) explorer only the local blockchain store.")]
 
         private static async Task StartSwarmAsync(
             Swarm<NullAction> swarm,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            MySQLRichStore store)
         {
             if (swarm is null)
             {
@@ -381,6 +385,8 @@ If omitted (default) explorer only the local blockchain store.")]
             Console.Error.WriteLine("Starts preloading.");
             await swarm.PreloadAsync(cancellationToken: cancellationToken);
             Console.Error.WriteLine("Finished preloading.");
+            Console.Error.WriteLine("Migrate to MySQL.");
+            store.Migrate();
             Startup.PreloadedSingleton = true;
 
             await swarm.StartAsync(cancellationToken: cancellationToken);

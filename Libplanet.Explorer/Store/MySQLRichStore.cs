@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using Libplanet.Action;
 using Libplanet.Blocks;
 using Libplanet.Store;
@@ -168,12 +170,40 @@ namespace Libplanet.Explorer.Store
         public void PutBlock<T>(Block<T> block)
             where T : IAction, new()
         {
-            _store.PutBlock(block);
+            StoreBlock<T>(block);
             foreach (var tx in block.Transactions)
             {
                 PutTransaction(tx);
                 StoreTxReferences(tx.Id, block.Hash, tx.Nonce);
             }
+        }
+
+        public void StoreBlock<T>(Block<T> block)
+            where T : IAction, new()
+        {
+                Console.WriteLine(block.Difficulty);
+                Console.WriteLine(block.Header.Hash.ToString());
+                Console.WriteLine(block.Header.HashAlgorithm.Type);
+                Console.WriteLine(block.Header.Index);
+                Console.WriteLine(block.Header.Miner.ToString());
+                Console.WriteLine(block.Header.Nonce.ToString());
+                Console.WriteLine(block.Header.PreEvaluationHash);
+                Console.WriteLine(block.Header.PreviousHash.ToString());
+                Console.WriteLine(block.Header.ProtocolVersion);
+                Console.WriteLine(block.Header.PublicKey.ToString());
+                Console.WriteLine(block.Header.Signature);
+                Console.WriteLine(block.Header.StateRootHash);
+                Console.WriteLine(block.Header.Timestamp.ToString(
+                    "yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture));
+                Console.WriteLine(block.Header.TotalDifficulty);
+                Console.WriteLine(block.Header.TxHash.Value.ToString());
+/*
+            InsertMany("blocks", new[] {"difficulty", "hash", "hash_algorithm",
+            "index", "miner", "nonce", "pre_evaluation_hash", "previous_hash",
+            "protocol_version", "public_key", "signature", "state_root_hash",
+            "timestamp", "total_difficulty", "tx_hash"},
+            );
+*/
         }
 
         /// <inheritdoc cref="IStore.ListChainIds()"/>
@@ -281,7 +311,7 @@ namespace Libplanet.Explorer.Store
         ) =>
             _store.SetBlockPerceivedTime(blockHash, perceivedTime);
 
-        public void StoreTxReferences(TxId txId, in BlockHash blockHash,  long txNonce)
+        public void StoreTxReferences(TxId txId, in BlockHash blockHash, long txNonce)
         {
             Insert("tx_references", new Dictionary<string, object>
             {
@@ -319,6 +349,18 @@ namespace Libplanet.Explorer.Store
                 ["tx_id"] = txId.ToByteArray(),
                 ["tx_nonce"] = txNonce,
             });
+        }
+
+        public void Migrate()
+        {
+            Guid canonicalID = (Guid)_store.GetCanonicalChainId();
+            HashAlgorithmType GetHashAlgorithm(long index) => HashAlgorithmType.Of<SHA256>();
+            for (long i = 0; i < _store.CountIndex(canonicalID); i++)
+            {
+                this.PutBlock(_store.GetBlock<NullAction>(
+                GetHashAlgorithm,
+                (BlockHash)_store.IndexBlockHash(canonicalID, i)));
+            }
         }
 
         public IEnumerable<TxId> IterateSignerReferences(
