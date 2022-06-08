@@ -1,7 +1,7 @@
 Libplanet changelog
 ===================
 
-Version 0.38.0
+Version 0.39.0
 --------------
 
 To be released.
@@ -16,6 +16,30 @@ To be released.
 
 ### Added APIs
 
+### Behavioral changes
+
+### Bug fixes
+
+### Dependencies
+
+### CLI tools
+
+
+Version 0.38.0
+--------------
+
+Released on June 7th, 2022.
+
+### Backward-incompatible API changes
+
+ -  (Libplanet.Net) Removed `username` and `credential` parameters from
+    `IceServer(string, string?, string?)` and
+    `IceServer(Uri, string?, string?)`.  [[#2048], [#2049]]
+ -  (Libplanet.Net) Properties `IceServer.Username` and `IceServer.Credential`
+    are no longer nullable.  [[#2048], [#2049]]
+
+### Added APIs
+
  -  (Libplanet.Node) Added `NetworkConfig` class.  [[#1946], [#2000]]
  -  (Libplanet.Node) Added `NodeConfig` class.  [[#1946], [#2000]]
  -  (Libplanet.Node) Added `NodeUtils` class.  [[#2013]]
@@ -23,17 +47,12 @@ To be released.
     `PreloadConfig`, and `SyncConfig` classes.  [[#2021]]
 
 ### Behavioral changes
+
  -  Added `PrivateKey(string)` constructor for hexadecimal string.
     [[#2012], [#2022]]
  -  Allow `0x` prefix for `Address` class constructor.
-    `DeriveAddress` method will remove '0x' prefix string.
+    `DeriveAddress` method will remove `0x` prefix string.
     [[#2015], [#2018]]
-
-### Bug fixes
-
-### Dependencies
-
-### CLI tools
 
 [#1946]: https://github.com/planetarium/libplanet/issues/1946
 [#2000]: https://github.com/planetarium/libplanet/pull/2000
@@ -43,6 +62,8 @@ To be released.
 [#2018]: https://github.com/planetarium/libplanet/pull/2018
 [#2021]: https://github.com/planetarium/libplanet/pull/2021
 [#2022]: https://github.com/planetarium/libplanet/pull/2022
+[#2048]: https://github.com/planetarium/libplanet/issues/2048
+[#2049]: https://github.com/planetarium/libplanet/pull/2049
 
 
 Version 0.37.0
