@@ -31,13 +31,21 @@ CREATE TABLE IF NOT EXISTS `blocks` (
     `index`                 BIGINT,
     `miner`                 VARCHAR(42),
     `nonce`                 VARCHAR(20),
-    `pre_evaluation_hash`   BINARY(20),
+    `pre_evaluation_hash`   VARCHAR(128),
     `previous_hash`         VARCHAR(64),
     `protocol_version`      TINYINT UNSIGNED,
-    `public_key`            VARCHAR(66),
-    `signature`             BINARY(20),
+    `public_key`            VARCHAR(128),
+    `signature`             VARCHAR(128),
     `state_root_hash`       VARCHAR(64),
     `timestamp`             DATETIME(6),
     `total_difficulty`      BIGINT,
     `tx_hash`               VARCHAR(64)
+);
+
+CREATE TABLE IF NOT EXISTS `actions` (
+    CONSTRAINT `uid` UNIQUE (`tx_id`, `tx_nonce`),
+
+    `action`                LONGTEXT,
+    `tx_id`                 VARCHAR(64),
+    `tx_nonce`              BIGINT
 );

@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Libplanet.Action;
 using Libplanet.Blocks;
 using Libplanet.Store;
@@ -181,29 +182,63 @@ namespace Libplanet.Explorer.Store
         public void StoreBlock<T>(Block<T> block)
             where T : IAction, new()
         {
-                Console.WriteLine(block.Difficulty);
-                Console.WriteLine(block.Header.Hash.ToString());
-                Console.WriteLine(block.Header.HashAlgorithm.Type);
-                Console.WriteLine(block.Header.Index);
-                Console.WriteLine(block.Header.Miner.ToString());
-                Console.WriteLine(block.Header.Nonce.ToString());
-                Console.WriteLine(block.Header.PreEvaluationHash);
-                Console.WriteLine(block.Header.PreviousHash.ToString());
-                Console.WriteLine(block.Header.ProtocolVersion);
-                Console.WriteLine(block.Header.PublicKey.ToString());
-                Console.WriteLine(block.Header.Signature);
-                Console.WriteLine(block.Header.StateRootHash);
-                Console.WriteLine(block.Header.Timestamp.ToString(
-                    "yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture));
-                Console.WriteLine(block.Header.TotalDifficulty);
-                Console.WriteLine(block.Header.TxHash.Value.ToString());
-/*
-            InsertMany("blocks", new[] {"difficulty", "hash", "hash_algorithm",
-            "index", "miner", "nonce", "pre_evaluation_hash", "previous_hash",
-            "protocol_version", "public_key", "signature", "state_root_hash",
-            "timestamp", "total_difficulty", "tx_hash"},
-            );
-*/
+            var difficulty = block.Header.Difficulty.ToString();
+            var hash = block.Header.Hash.ToString();
+            var hash_algorithm = block.Header.HashAlgorithm.ToString();
+            var index = block.Header.Index.ToString();
+            var miner = block.Header.Miner.ToString();
+            var nonce = block.Header.Nonce.ToString();
+            var pre_evaluation_hash = BitConverter.ToString(
+                block.Header.PreEvaluationHash.ToArray()).Replace("-", string.Empty);
+            var previous_hash = block.Header.PreviousHash.ToString();
+            var protocol_version = block.Header.ProtocolVersion;
+            string public_key;
+            if (block.Header.PublicKey is null)
+            {
+                public_key = null;
+            }
+            else
+            {
+                public_key = block.Header.PublicKey.ToString();
+            }
+
+            string signature;
+            if (block.Header.Signature is null)
+            {
+                signature = null;
+            }
+            else
+            {
+                signature = BitConverter.ToString(block.Header.Signature
+                .GetValueOrDefault().ToArray());
+            }
+
+            var state_root_hash = block.Header.StateRootHash.ToString();
+            var timestamp = block.Header.Timestamp.ToString(
+            "yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
+            var total_difficulty = block.Header.TotalDifficulty.ToString();
+            var tx_hash = block.Header.TxHash.ToString();
+            Console.WriteLine(public_key);
+            Console.WriteLine(pre_evaluation_hash);
+            Console.WriteLine(signature);
+            Insert("blocks", new Dictionary<string, object>
+            {
+                ["difficulty"] = difficulty,
+                ["hash"] = hash,
+                ["hash_algorithm"] = hash_algorithm,
+                ["index"] = index,
+                ["miner"] = miner,
+                ["nonce"] = nonce,
+                ["pre_evaluation_hash"] = pre_evaluation_hash,
+                ["previous_hash"] = previous_hash,
+                ["protocol_version"] = protocol_version,
+                ["public_key"] = public_key,
+                ["signature"] = signature,
+                ["state_root_hash"] = state_root_hash,
+                ["timestamp"] = timestamp,
+                ["total_difficulty"] = total_difficulty,
+                ["tx_hash"] = tx_hash,
+            });
         }
 
         /// <inheritdoc cref="IStore.ListChainIds()"/>
@@ -294,15 +329,30 @@ namespace Libplanet.Explorer.Store
             where T : IAction, new()
         {
             _store.PutTransaction(tx);
+            foreach (var action in tx.Actions)
+            {
+                var jsonAction = action.PlainValue.Inspect(true)
+                .Replace("\\x", string.Empty)
+                .Replace("b\"", "\"")
+                .Replace("\n", string.Empty);
+                Console.Write(jsonAction);
+                Insert("actions", new Dictionary<string, object>
+                {
+                    ["action"] = jsonAction,
+                    ["tx_id"] = tx.Id.ToString(),
+                    ["tx_nonce"] = tx.Nonce,
+                });
+            }
+
             StoreSignerReferences(tx.Id, tx.Nonce, tx.Signer);
             InsertMany(
-                "updated_address_references",
-                new[] { "updated_address", "tx_id", "tx_nonce" },
-                tx.UpdatedAddresses.Select(
-                    addr => new object[]
-                    {
+                        "updated_address_references",
+                        new[] { "updated_address", "tx_id", "tx_nonce" },
+                        tx.UpdatedAddresses.Select(
+                            addr => new object[]
+                            {
                         addr.ToByteArray(), tx.Id.ToByteArray(), tx.Nonce,
-                    }));
+                            }));
         }
 
         public void SetBlockPerceivedTime(
@@ -355,7 +405,7 @@ namespace Libplanet.Explorer.Store
         {
             Guid canonicalID = (Guid)_store.GetCanonicalChainId();
             HashAlgorithmType GetHashAlgorithm(long index) => HashAlgorithmType.Of<SHA256>();
-            for (long i = 0; i < _store.CountIndex(canonicalID); i++)
+            for (long i = 1; i < _store.CountIndex(canonicalID); i++)
             {
                 this.PutBlock(_store.GetBlock<NullAction>(
                 GetHashAlgorithm,
@@ -462,6 +512,7 @@ namespace Libplanet.Explorer.Store
                 }
                 else
                 {
+                    Log.Debug(e.Message);
                     throw;
                 }
             }

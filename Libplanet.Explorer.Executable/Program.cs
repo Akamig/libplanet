@@ -180,7 +180,7 @@ If omitted (default) explorer only the local blockchain store.")]
             try
             {
                 IRichStore store = LoadStore(options);
-                IStateStore stateStore = new TrieStateStore(new DefaultKeyValueStore(
+                IStateStore stateStore = new TrieStateStore(new RocksDBKeyValueStore(
                     System.IO.Path.Combine(options.StorePath, "states")));
 
                 IBlockPolicy<NullAction> policy =
@@ -269,7 +269,8 @@ If omitted (default) explorer only the local blockchain store.")]
                     {
                         await Task.WhenAll(
                             webHost.RunAsync(cts.Token),
-                            StartSwarmAsync(swarm, cts.Token, (MySQLRichStore)store)
+                            StartSwarmAsync(swarm, cts.Token)
+
                         );
                     }
                     catch (OperationCanceledException)
@@ -333,10 +334,13 @@ If omitted (default) explorer only the local blockchain store.")]
                     options.MySQLPort.Value,
                     options.MySQLUsername,
                     options.MySQLPassword);
-                return new MySQLRichStore(
+
+                var store = new MySQLRichStore(
                     innerStore,
                     mySqlOptions
                 );
+                store.Migrate();
+                return store;
             }
             else
             {
@@ -363,8 +367,7 @@ If omitted (default) explorer only the local blockchain store.")]
 
         private static async Task StartSwarmAsync(
             Swarm<NullAction> swarm,
-            CancellationToken cancellationToken,
-            MySQLRichStore store)
+            CancellationToken cancellationToken)
         {
             if (swarm is null)
             {
@@ -386,7 +389,6 @@ If omitted (default) explorer only the local blockchain store.")]
             await swarm.PreloadAsync(cancellationToken: cancellationToken);
             Console.Error.WriteLine("Finished preloading.");
             Console.Error.WriteLine("Migrate to MySQL.");
-            store.Migrate();
             Startup.PreloadedSingleton = true;
 
             await swarm.StartAsync(cancellationToken: cancellationToken);
